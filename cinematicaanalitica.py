@@ -236,7 +236,7 @@ if __name__ == '__main__':
                         else:
                             flag = True
 
-                if i<501:
+                if flag:
                     #print(timeread[i])
                     _matrix1=matrix1[3]
                     cinematica_x.append(_matrix1[:3,3][0]) # Posição X do manipulador

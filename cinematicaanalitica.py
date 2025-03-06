@@ -171,24 +171,28 @@ def normalization():
     aux = 0
     flag_changes = 0
     N = StepsPata1.shape[0]
-
+    print(N)
     P1_norma = np.zeros(N)
-
-    # Calcular a norma corretamente com as colunas X e Y
-    for k in range(N):
-        P1_norma[k] = np.linalg.norm(StepsPata1.iloc[k, 1:3])  
-
     changes = []
+    value =0
     epsilon = 1e-6  # Define um limite para evitar erros numéricos
 
-
-
-    # Detectar mudanças
-    for k in range(1, N):  
-        if np.isclose(P1_norma[k - 1], 10, atol=epsilon) and not np.isclose(P1_norma[k], 10, atol=epsilon):
+    # Calcular a norma corretamente com as colunas X e Y
+    for k in range(N-1):
+        P1_norma[k] = np.linalg.norm(StepsPata1.iloc[k, 1:3])  
+        print(P1_norma[k])
+        if P1_norma[k] == P1_norma [k-1]:
+            value = P1_norma[k]
+        if np.isclose(P1_norma[k - 1], value, atol=epsilon) and not np.isclose(P1_norma[k], value, atol=epsilon):
             
             changes.append(k-1)
 
+
+
+
+    # Detectar mudanças 
+
+    print(changes)
     return changes
 # Função principal - main
 if __name__ == '__main__':
@@ -212,6 +216,7 @@ if __name__ == '__main__':
         timeread  = StepsPata1["Time      "]
         time_step = len(timeread)
         changes = normalization()
+        print(changes)
         thetas = ler_thetas(53.97,-45.84,-66.52,-31.61, changes)
 
         flag = True
@@ -223,6 +228,9 @@ if __name__ == '__main__':
         theta2 = []
         _matrix1 = np.identity(4)
         _matrix2 = np.identity(4)
+        print(changes)
+        print(len(changes))
+        print(range(len(changes)))
         for i in range(time_step):
                 
                 theta1.append([thetas[i][0],thetas[i][1],thetas[i][2],thetas[i][3]]) 
@@ -230,13 +238,15 @@ if __name__ == '__main__':
                 matrix1 =  kinematic(DH_a1, DH_alpha, DH_d, theta1[i], rotate_matrix(0.0, 0.0, 0.0, _matrix2))
                 matrix2 =  kinematic(DH_a2, DH_alpha, DH_d, theta2[i], rotate_matrix(0.0, 3.14, 0.0, _matrix1))
                 for j in range(len(changes)):
+                    
                     if i== changes[j]:
+                        print(i)
                         if flag:
                             flag = False
                         else:
                             flag = True
 
-                if i<501:
+                if flag:
                     #print(timeread[i])
                     _matrix1=matrix1[3]
                     cinematica_x.append(_matrix1[:3,3][0]) # Posição X do manipulador
@@ -262,20 +272,37 @@ if __name__ == '__main__':
         StepsY_Pata1 = StepsPata1["Y"]
         StepsX_Pata2 = StepsPata2["X"]
         StepsY_Pata2 = StepsPata2["Y"]    
-        reset_indices = StepsPata1[StepsPata1["Time      "].diff() < 0].index
-        reset_indices[:10]
+        # Rename column to remove trailing spaces
+        StepsPata1.rename(columns={"Time      ": "Time"}, inplace=True)
 
-        time_offset = 0
+        # Identify reset points
+        reset_indices = StepsPata1[StepsPata1["Time"].diff() < 0].index
 
-        # Create a copy of the time column
-        adams_time = StepsPata1["Time      "].copy()
+        #print(reset_indices)
+        # Initialize time offset and create a copy of the time column
+        time_offset = 6
+        last_time = 0
+        adams_time = StepsPata1["Time"].copy()
 
-        # Iterate over reset points and adjust time
+        # Adjust time values
         for idx in reset_indices:
-            time_offset += adams_time.loc[idx - 1]  # Add last time before reset
-            adams_time.loc[idx:] += time_offset  # Shift all subsequent times
+            last_time = adams_time.loc[idx - 1]
+            adams_time.loc[idx:] += time_offset
+            #print(last_time)
+            #print(adams_time.loc[idx - 1])
 
-        last_time_step = (adams_time.to_numpy()[len(adams_time)-1])
+            #if idx > 0:  # Ensure idx - 1 is valid
+            #    time_offset += adams_time.loc[idx - 1]
+            #     print(adams_time.loc[idx - 1])
+            #adams_time.loc[idx:] = time_offset
+        
+
+        # Store adjusted time back into the DataFrame
+        StepsPata1["Adjusted_Time"] = adams_time
+
+        # Retrieve the last time step
+        last_time_step = adams_time.iloc[-1]
+        
         #print(cinematica_x2)
         # Criando os gráficos para comparar:
         # 1 - Posições convergidas pelo código;
